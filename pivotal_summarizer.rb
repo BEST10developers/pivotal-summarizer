@@ -44,7 +44,10 @@ end
 
 PivotalTracker::Client.token = ENV['PIVOTAL_API_TOKEN']
 project = PivotalTracker::Project.find(ENV['PIVOTAL_PROJECT_ID'])
-accepted_stories = project.stories.all.select { |s| s.current_state == 'accepted' }
+accepted_stories = project.stories.all.select { |s| s.current_state == 'accepted' }.map do |s|
+  s.estimate = 1 if s.estimate && s.estimate < 0
+  s
+end
 
 put_owner_based_points(accepted_stories)
 puts '===='
