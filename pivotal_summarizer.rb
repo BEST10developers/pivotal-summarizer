@@ -42,13 +42,46 @@ def put_story_names(stories)
   File.write('story_names.csv', csv)
 end
 
-PivotalTracker::Client.token = ENV['PIVOTAL_API_TOKEN']
-project = PivotalTracker::Project.find(ENV['PIVOTAL_PROJECT_ID'])
-accepted_stories = project.stories.all.select { |s| s.current_state == 'accepted' }.map do |s|
-  s.estimate = 1 if s.estimate && s.estimate < 0
-  s
+def summarize(project)
+  puts '[start] summarize'
+  accepted_stories = project.stories.all.select { |s| s.current_state == 'accepted' }.map do |s|
+    s.estimate = 1 if s.estimate && s.estimate < 0
+    s
+  end
+
+  put_owner_based_points(accepted_stories)
+  puts '===='
+  put_story_names(accepted_stories)
 end
 
-put_owner_based_points(accepted_stories)
-puts '===='
-put_story_names(accepted_stories)
+def raw(project, file_name)
+  puts '[start] raw'
+  stories = project.stories.all
+  headers = %w(
+    id name status accepted_at url
+  )
+  csv = CSV.generate(headers: headers, write_headers: true) do |c|
+    stories.each do |s|
+      c << [
+        s.id,
+        s.name,
+        s.current_state,
+        s.accepted_at,
+        s.url
+      ]
+    end
+  end
+  File.write(file_name, csv)
+  puts '[end] raw'
+end
+
+PivotalTracker::Client.token = ENV['PIVOTAL_API_TOKEN']
+project = PivotalTracker::Project.find(ENV['PIVOTAL_PROJECT_ID'])
+
+case ARGV[0]
+when 'raw'
+  file_name = ARGV[1] || 'pivotal_stories.csv'
+  raw(project, file_name)
+else
+  summarize(project)
+end
